@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canyon Postman — a golden-hour mail run</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a2230; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #f5f0e6; }
+  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  /* --- HUD --- */
+  #hud { position: fixed; inset: 0; display: none; flex-direction: column; justify-content: space-between; pointer-events: none; z-index: 5; }
+  #hud-top { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+  .hud-chip { background: rgba(16, 21, 28, 0.72); border: 1px solid rgba(255, 179, 92, 0.35); border-radius: 8px; padding: 6px 12px; backdrop-filter: blur(2px); }
+  .hud-chip .lbl { font-size: 10px; letter-spacing: 0.12em; color: #8fa3b8; display: block; }
+  .hud-chip .val { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #f5f0e6; }
+  .hud-chip.stage { border-color: rgba(127, 212, 168, 0.5); }
+  .hud-chip.stage .val { font-size: 14px; color: #7fd4a8; }
+  #hud-target { margin-left: auto; }
+  #hud-message { position: absolute; top: 78px; left: 50%; transform: translateX(-50%); max-width: 90vw; text-align: center; font-size: 19px; font-weight: 600; text-shadow: 0 2px 8px rgba(0,0,0,0.8); padding: 6px 16px; }
+  #hud-bottom { display: flex; justify-content: center; padding: 0 0 10px; }
+  #gauges { width: min(560px, 86vw); height: 86px; background: rgba(16, 21, 28, 0.66); border: 1px solid rgba(255, 179, 92, 0.3); border-radius: 12px; }
+
+  /* Cockpit windshield frame: dark pillars + a glare strip, only in cockpit view. */
+  #cockpit-frame { position: fixed; inset: 0; display: none; pointer-events: none; z-index: 4; }
+  #cockpit-frame::before { content: ""; position: absolute; inset: 0; background:
+    linear-gradient(105deg, rgba(10,14,20,0.92) 0%, rgba(10,14,20,0.92) 7%, transparent 7.5%),
+    linear-gradient(255deg, rgba(10,14,20,0.92) 0%, rgba(10,14,20,0.92) 7%, transparent 7.5%),
+    linear-gradient(0deg, rgba(10,14,20,0.94) 0%, rgba(10,14,20,0.94) 12%, transparent 12.5%),
+    linear-gradient(180deg, rgba(10,14,20,0.9) 0%, rgba(10,14,20,0.9) 9%, transparent 9.5%); }
+  #cockpit-frame::after { content: ""; position: absolute; left: 12%; top: 0; width: 26%; height: 100%; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%); }
+
+  /* --- Screens --- */
+  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 10; background: rgba(12, 18, 28, 0.55); backdrop-filter: blur(3px); }
+  .panel { max-width: 620px; width: 92vw; background: rgba(16, 21, 28, 0.92); border: 1px solid rgba(255, 179, 92, 0.45); border-radius: 16px; padding: 30px 34px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .panel h1 { font-size: 42px; letter-spacing: 0.02em; color: #ffb35c; margin-bottom: 4px; }
+  .panel h2 { font-size: 30px; color: #ffb35c; margin-bottom: 10px; }
+  .panel .sub { font-size: 16px; color: #c9d4e0; line-height: 1.55; margin-bottom: 18px; }
+  .panel .controls { font-size: 14px; color: #8fa3b8; line-height: 1.9; margin-bottom: 22px; text-align: left; display: inline-block; }
+  .panel .controls b { color: #f5f0e6; }
+  .panel .stats { font-size: 15px; line-height: 1.8; color: #c9d4e0; margin-bottom: 20px; }
+  .panel .stats b { color: #ffb35c; }
+  .btn { pointer-events: auto; cursor: pointer; font-size: 18px; font-weight: 700; color: #1a2230; background: #ffb35c; border: none; border-radius: 10px; padding: 13px 34px; }
+  .btn:hover { background: #ffc57d; }
+  .btn.ghost { background: transparent; color: #ffb35c; border: 1px solid #ffb35c; margin-left: 10px; }
+  #best-line { margin-top: 14px; font-size: 13px; color: #8fa3b8; }
+  .hint { margin-top: 16px; font-size: 12px; color: #8fa3b8; }
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="cockpit-frame"></div>
+
+<div id="hud">
+  <div id="hud-top">
+    <div class="hud-chip"><span class="lbl">ALTITUDE</span><span class="val" id="hud-alt">12 m</span></div>
+    <div class="hud-chip"><span class="lbl">SPEED</span><span class="val" id="hud-spd">0 km/h</span></div>
+    <div class="hud-chip"><span class="lbl">HEADING</span><span class="val" id="hud-hdg">090°</span></div>
+    <div class="hud-chip"><span class="lbl">VERT SPEED</span><span class="val" id="hud-vs">+0.0 m/s</span></div>
+    <div class="hud-chip"><span class="lbl">FUEL</span><span class="val" id="hud-fuel">100%</span></div>
+    <div class="hud-chip"><span class="lbl">DAMAGE</span><span class="val" id="hud-dmg">0%</span></div>
+    <div class="hud-chip"><span class="lbl">SCORE</span><span class="val" id="hud-score">0</span></div>
+    <div class="hud-chip stage"><span class="lbl">STAGE</span><span class="val" id="hud-stage">TAKEOFF</span></div>
+    <div class="hud-chip" id="hud-target"><span class="lbl">NEXT</span><span class="val" id="hud-target-val">Climb out ↑ 0 m</span></div>
+  </div>
+  <div id="hud-message"></div>
+  <div id="hud-bottom"><canvas id="gauges" width="560" height="86"></canvas></div>
+</div>
+
+<div class="screen" id="screen-title">
+  <div class="panel">
+    <h1>CANYON POSTMAN</h1>
+    <p class="sub">Golden hour over the islands. Take off from the home strip, thread the
+    golden rings through the canyon, drop the mail low over the far shore — then
+    fight the headwind home and put her down gently. Mind the stall, mind the fuel,
+    mind the gusts between the walls.</p>
+    <div class="controls">
+      <b>↑ / ↓</b> pitch &nbsp;·&nbsp; <b>← / →</b> bank &amp; turn &nbsp;·&nbsp; <b>SHIFT / CTRL</b> throttle up / down<br>
+      <b>SPACE</b> drop the mail (low &amp; slow) &nbsp;·&nbsp; <b>G</b> landing gear &nbsp;·&nbsp; <b>C</b> camera<br>
+      <b>P</b> pause &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound on/off &nbsp;·&nbsp; drag the mouse to steer
+    </div>
+    <button class="btn" id="start-btn">START THE MAIL RUN</button>
+    <div id="best-line"></div>
+    <p class="hint">One sortie, about three to five minutes. Rings 100 pts each · drop up to 300 · a gentle landing up to 200.</p>
+  </div>
+</div>
+
+<div class="screen" id="screen-pause">
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <p class="sub">The mail can wait a moment.</p>
+    <button class="btn" id="resume-btn">RESUME</button>
+    <button class="btn ghost" id="title-restart-btn">RESTART SORTIE</button>
+  </div>
+</div>
+
+<div class="screen" id="screen-over">
+  <div class="panel">
+    <h2 id="over-title">DELIVERED</h2>
+    <p class="sub" id="over-verdict"></p>
+    <p class="stats" id="over-stats"></p>
+    <button class="btn" id="restart-btn">FLY AGAIN</button>
+  </div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
