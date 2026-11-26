@@ -102,9 +102,9 @@ export const PALETTE = {
   planeOrange: 0xe86a1f,
   planeDark: 0x2b2f36,
   townLight: 0xffd27d,
-  hudAmber: '#ffb35c',
-  hudGreen: '#7fd4a8',
-  hudRed: '#ff6b57',
+  hudAmber: '#ffd60a',
+  hudGreen: '#30d158',
+  hudRed: '#ff453a',
 };
 
 // --- fixed step for the simulation (the starter's pattern) ---

@@ -52,10 +52,10 @@ function drawDial(ctx, cx, cy, r, label, valueText, frac, color) {
   // Face.
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#10151c';
+  ctx.fillStyle = 'rgba(10,10,14,0.55)';
   ctx.fill();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = '#3a4552';
+  ctx.strokeStyle = 'rgba(255,255,255,0.30)';
   ctx.stroke();
   // Arc of the value.
   ctx.beginPath();
@@ -68,15 +68,15 @@ function drawDial(ctx, cx, cy, r, label, valueText, frac, color) {
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(Math.cos(a) * (r - 9), Math.sin(a) * (r - 9));
-  ctx.strokeStyle = '#f5f0e6';
+  ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 2;
   ctx.stroke();
   // Label + value.
-  ctx.fillStyle = '#8fa3b8';
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
   ctx.font = '9px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(label, 0, r * 0.42);
-  ctx.fillStyle = '#f5f0e6';
+  ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 13px system-ui, sans-serif';
   ctx.fillText(valueText, 0, r * 0.72);
   ctx.restore();
@@ -90,11 +90,11 @@ function drawAttitude(ctx, cx, cy, r, pitch, roll) {
   ctx.clip();
   ctx.rotate(-roll);
   const dy = pitch * r * 1.4;
-  ctx.fillStyle = '#2e4a7a';
+  ctx.fillStyle = '#3a6ea8';
   ctx.fillRect(-r, -r + dy, r * 2, r);
   ctx.fillStyle = '#c98a4b';
   ctx.fillRect(-r, dy, r * 2, r);
-  ctx.strokeStyle = '#f5f0e6';
+  ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(-r, dy);
@@ -104,10 +104,10 @@ function drawAttitude(ctx, cx, cy, r, pitch, roll) {
   // Bezel + fixed wings marker.
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = '#3a4552';
+  ctx.strokeStyle = 'rgba(255,255,255,0.30)';
   ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.strokeStyle = '#ffb35c';
+  ctx.strokeStyle = '#ffd60a';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(cx - r * 0.55, cy);
@@ -115,7 +115,7 @@ function drawAttitude(ctx, cx, cy, r, pitch, roll) {
   ctx.moveTo(cx + r * 0.18, cy);
   ctx.lineTo(cx + r * 0.55, cy);
   ctx.stroke();
-  ctx.fillStyle = '#8fa3b8';
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
   ctx.font = '9px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('ATT', cx, cy + r * 0.72);
@@ -126,15 +126,15 @@ function drawCompass(ctx, cx, cy, r, heading) {
   ctx.translate(cx, cy);
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#10151c';
+  ctx.fillStyle = 'rgba(10,10,14,0.55)';
   ctx.fill();
-  ctx.strokeStyle = '#3a4552';
+  ctx.strokeStyle = 'rgba(255,255,255,0.30)';
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.clip();
   // The card turns so the current bearing sits under the lubber line (top).
   ctx.rotate(heading - Math.PI / 2);
-  ctx.fillStyle = '#8fa3b8';
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
   ctx.font = '10px system-ui, sans-serif';
   ctx.textAlign = 'center';
   for (const [deg, label] of [[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W']]) {
@@ -142,13 +142,13 @@ function drawCompass(ctx, cx, cy, r, heading) {
     ctx.fillText(label, Math.cos(a) * (r - 12), Math.sin(a) * (r - 12) + 3);
   }
   ctx.restore();
-  ctx.strokeStyle = '#ffb35c';
+  ctx.strokeStyle = '#ffd60a';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(cx, cy - r + 3);
   ctx.lineTo(cx, cy - r + 12);
   ctx.stroke();
-  ctx.fillStyle = '#f5f0e6';
+  ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 13px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(String(headingDeg(heading)).padStart(3, '0'), cx, cy + r * 0.72);
@@ -164,13 +164,13 @@ export function drawGauges(hud, flight) {
   const gap = w / 5;
   const cy = h * 0.46;
   drawAttitude(ctx, gap * 0.5, cy, r, flight.pitch, flight.roll);
-  drawDial(ctx, gap * 1.5, cy, r, 'SPD', String(Math.round(flight.speed * 3.6)), Math.min(1, flight.speed / 55), '#7fd4a8', );
-  drawDial(ctx, gap * 2.5, cy, r, 'ALT', String(Math.round(flight.y)), Math.min(1, flight.y / 160), '#ffb35c');
+  drawDial(ctx, gap * 1.5, cy, r, 'SPD', String(Math.round(flight.speed * 3.6)), Math.min(1, flight.speed / 55), '#30d158', );
+  drawDial(ctx, gap * 2.5, cy, r, 'ALT', String(Math.round(flight.y)), Math.min(1, flight.y / 160), '#ffd60a');
   drawCompass(ctx, gap * 3.5, cy, r, flight.heading);
   const fuelFrac = flight.fuel / 100;
   drawDial(
     ctx, gap * 4.5, cy, r, 'FUEL', `${Math.round(flight.fuel)}%`,
-    fuelFrac, fuelFrac > 0.25 ? '#7fd4a8' : '#ff6b57',
+    fuelFrac, fuelFrac > 0.25 ? '#30d158' : '#ff453a',
   );
 }
 
@@ -182,17 +182,17 @@ export function updateHud(hud, flight, mission, target, message, messageKind) {
   const vs = flight.verticalSpeed;
   hud.vs.textContent = `${vs >= 0 ? '+' : ''}${vs.toFixed(1)} m/s`;
   hud.fuel.textContent = `${Math.round(flight.fuel)}%`;
-  hud.fuel.style.color = flight.fuel > 25 ? '' : '#ff6b57';
+  hud.fuel.style.color = flight.fuel > 25 ? '' : '#ff453a';
   hud.dmg.textContent = `${Math.round(flight.damage)}%`;
-  hud.dmg.style.color = flight.damage > 50 ? '#ff6b57' : '';
+  hud.dmg.style.color = flight.damage > 50 ? '#ff453a' : '';
   hud.score.textContent = String(mission.score);
   hud.stage.textContent = mission.stage.toUpperCase();
   const t = targetArrow(flight, target);
   hud.target.textContent = `${target.label} ${t.arrow} ${t.dist} m`;
-  hud.target.style.color = t.ahead ? '#7fd4a8' : '';
+  hud.target.style.color = t.ahead ? '#30d158' : '';
   if (message !== undefined) {
     hud.message.textContent = message;
-    hud.message.style.color = messageKind === 'warn' ? '#ff6b57' : messageKind === 'good' ? '#7fd4a8' : '#f5f0e6';
+    hud.message.style.color = messageKind === 'warn' ? '#ff453a' : messageKind === 'good' ? '#30d158' : '#ffffff';
   }
   drawGauges(hud, flight);
 }
