@@ -791,7 +791,58 @@ function makeArchipelago(scene) {
     ailerons[0].rotation.x=s.bank*.48;ailerons[1].rotation.x=-s.bank*.48;tailControl.rotation.x=-s.pitch*.15;
   }};
 }
-</script><script>function createFlightView(canvas) {
+</script><script>// One batched layer of tapered air streaks outside the aiming area.
+function makeSlipstream(scene){
+  const T=THREE,points=[],seeds=[],indices=[],count=48,segments=5;
+  for(let i=0;i<count;i++){
+    const first=points.length/3,angle=i*2.399963+.12*Math.sin(i*7.1),seed=((i*37)%101)/101;
+    for(let j=0;j<=segments;j++){
+      for(const side of [-1,1]){points.push(j/segments,side,0);seeds.push(angle,seed,((i*61+9)%97)/97);}
+      if(j<segments){const k=first+2*j;indices.push(k,k+1,k+2,k+1,k+3,k+2);}
+    }
+  }
+  const geo=new T.BufferGeometry();
+  geo.setAttribute('position',new T.Float32BufferAttribute(points,3));
+  geo.setAttribute('windSeed',new T.Float32BufferAttribute(seeds,3));geo.setIndex(indices);
+  const u={travel:{value:0},intensity:{value:0},aspect:{value:1},lean:{value:0}};
+  const mat=new T.ShaderMaterial({uniforms:u,side:T.DoubleSide,forceSinglePass:true,transparent:true,depthTest:false,depthWrite:false,
+    vertexShader:`attribute vec3 windSeed;uniform float travel,intensity,aspect,lean;
+      varying float opacity,across;
+      void main(){
+        float q=position.x,seed=windSeed.y;
+        vec2 dir=vec2(cos(windSeed.x),sin(windSeed.x));
+        dir/=max(abs(dir.x),abs(dir.y));
+        float phase=fract(windSeed.z+travel*(.79+.44*seed));
+        float lengthAlong=(.043+.102*seed)*(.57+intensity);
+        float r=.64+.57*phase+q*lengthAlong;
+        vec2 uv=dir*r;
+        uv.x+=lean*.055*(1.-r*r);
+        vec2 normal=normalize(vec2(-dir.y,dir.x*aspect));
+        float taper=.08+.92*sin(q*3.14159);
+        uv+=normal*vec2(1./aspect,1.)*position.y*taper*(.0021+.0029*seed);
+        float envelope=smoothstep(0.,.15,phase)*(1.-smoothstep(.72,1.,phase));
+        float density=smoothstep(seed*.65,seed*.65+.21,intensity);
+        opacity=envelope*density*intensity*(.37+.37*seed);
+        across=position.y;gl_Position=vec4(uv,0.,1.);
+      }`,
+    fragmentShader:`varying float opacity,across;
+      void main(){float edge=abs(across);vec3 c=mix(vec3(.97,.99,1.),vec3(.57,.72,.77),edge*.8);
+        gl_FragColor=vec4(c,opacity*(1.-smoothstep(.38,1.,edge)));}`
+  });
+  const mesh=new T.Mesh(geo,mat);mesh.name='Slipstream';mesh.frustumCulled=false;mesh.renderOrder=12;mesh.visible=false;scene.add(mesh);
+  const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
+  let session=null;
+  return function update(s,dt,mode,ratio){
+    if(session!==s){session=s;u.travel.value=0;}
+    const strength=Flight.clamp((s.speed-29)/45,0,1);
+    mesh.visible=mode!=='brief'&&s.stage!=='takeoff'&&!s.ended&&strength>.015;
+    if(!mesh.visible)return;
+    u.travel.value+=dt*(.56+1.72*strength)*(motion.matches?.6:1);
+    u.intensity.value=strength*(motion.matches?.44:1);
+    u.aspect.value=ratio;u.lean.value=s.bank;
+  };
+}
+function createFlightView(canvas) {
   const T=THREE,renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
   const scene=new T.Scene();scene.fog=new T.FogExp2('#e9b181',.000205);
@@ -828,6 +879,7 @@ function makeArchipelago(scene) {
   ink.closePath();ink.fill();
   const shadow=new T.Mesh(new T.PlaneGeometry(19,14.5),new T.MeshBasicMaterial({map:new T.CanvasTexture(mask),color:'#1a3038',transparent:true,opacity:.28,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2;scene.add(shadow);
+  const updateWind=makeSlipstream(scene);
   const painter=new T.Vector3(),cameraAim=new T.Vector3();let snap=true,last='';
   function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
   window.addEventListener('resize',resize);resize();
@@ -857,6 +909,7 @@ function makeArchipelago(scene) {
     world.animateSea(dt);
     world.hoops.forEach((h,i)=>{h.visible=!s.pass[i];});
     world.bag.visible=!!s.bag;if(s.bag){world.bag.position.set(s.bag.x,s.bag.y,s.bag.z);world.bag.rotation.z=s.delivered?0:s.elapsed*2;}
+    updateWind(s,dt,mode,camera.aspect);
     renderer.render(scene,camera);
   }
   return {render,surface:world.surface,hitsArch:world.hitsArch,reset(){snap=true;},project(x,y,z){return painter.set(x,y,z).project(camera);}};
